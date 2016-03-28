@@ -15,61 +15,11 @@
 
 package io.netty.handler.codec.redis;
 
-import io.netty.util.AbstractReferenceCounted;
-import io.netty.util.ReferenceCountUtil;
-import io.netty.util.internal.StringUtil;
-
-import java.util.Collections;
 import java.util.List;
 
 /**
  * Arrays of <a href="http://redis.io/topics/protocol">RESP</a>
  */
-public class ArrayRedisMessage extends AbstractReferenceCounted implements RedisMessage {
-
-    public static final ArrayRedisMessage NULL_ARRAY = new ArrayRedisMessage(null);
-    public static final ArrayRedisMessage EMPTY_ARRAY = new ArrayRedisMessage(Collections.<RedisMessage>emptyList());
-
-    private final List<RedisMessage> children;
-
-    public ArrayRedisMessage(List<RedisMessage> children) {
-        this.children = children; // do not retain here. children are already retained when created.
-    }
-
-    public List<RedisMessage> children() {
-        return children;
-    }
-
-    @Override
-    public RedisMessageType type() {
-        return RedisMessageType.ARRAY;
-    }
-
-    @Override
-    public boolean isNull() {
-        return children == null;
-    }
-
-    @Override
-    protected void deallocate() {
-        if (children != null) {
-            for (RedisMessage msg : children) {
-                ReferenceCountUtil.release(msg);
-            }
-        }
-    }
-
-    @Override
-    public ArrayRedisMessage touch(Object hint) {
-        return this;
-    }
-
-    @Override
-    public String toString() {
-        return new StringBuilder(StringUtil.simpleClassName(this))
-                .append('[')
-                .append("children=")
-                .append(children != null ? children.size() : null)
-                .append(']').toString();
-    }
+public interface ArrayRedisMessage extends RedisMessage {
+    List<RedisMessage> children();
 }

@@ -35,8 +35,8 @@ public class RedisEncoder extends MessageToMessageEncoder<RedisObject> {
     }
 
     private static ByteBuf writeRedisMessage(ByteBuf buf, RedisObject msg) {
-        if (msg instanceof StringRedisMessage) {
-            writeStringMessage(buf, (StringRedisMessage) msg);
+        if (msg instanceof SimpleStringRedisMessage || msg instanceof ErrorRedisMessage) {
+            writeInlineByteBufMessage(buf, (AbstractByteBufRedisMessage) msg);
         } else if (msg instanceof IntegerRedisMessage) {
             writeIntegerMessage(buf, (IntegerRedisMessage) msg);
         } else if (msg instanceof BulkStringRedisMessage) {
@@ -51,7 +51,7 @@ public class RedisEncoder extends MessageToMessageEncoder<RedisObject> {
         return buf;
     }
 
-    private static void writeStringMessage(ByteBuf buf, StringRedisMessage msg) {
+    private static void writeInlineByteBufMessage(ByteBuf buf, AbstractByteBufRedisMessage msg) {
         buf.writeByte(msg.type().value());
         buf.writeBytes(msg.content());
         buf.writeBytes(CRLF);
@@ -107,8 +107,8 @@ public class RedisEncoder extends MessageToMessageEncoder<RedisObject> {
     }
 
     private static int calculateBufferLength(RedisObject msg) {
-        if (msg instanceof StringRedisMessage) {
-            return TYPE_LENGTH + ((StringRedisMessage) msg).content().length + CRLF.length;
+        if (msg instanceof SimpleStringRedisMessage || msg instanceof ErrorRedisMessage) {
+            return TYPE_LENGTH + ((AbstractByteBufRedisMessage) msg).content().readableBytes() + CRLF.length;
         } else if (msg instanceof IntegerRedisMessage) {
             return TYPE_LENGTH + getBufferLengthOfNumber(((IntegerRedisMessage) msg).value()) + CRLF.length;
         } else if (msg instanceof BulkStringRedisMessage) {

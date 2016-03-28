@@ -16,28 +16,16 @@
 package io.netty.handler.codec.redis;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.util.internal.StringUtil;
+import io.netty.buffer.DefaultByteBufHolder;
 
-/**
- * Errors of <a href="http://redis.io/topics/protocol">RESP</a>
- */
-public class ErrorRedisMessage extends AbstractByteBufRedisMessage {
+public abstract class AbstractByteBufRedisMessage extends DefaultByteBufHolder implements RedisMessage {
 
-    public ErrorRedisMessage(ByteBuf content) {
-        super(content);
+    public AbstractByteBufRedisMessage(ByteBuf content) {
+        super(content.retain());
     }
 
     @Override
-    public RedisMessageType type() {
-        return RedisMessageType.ERROR;
-    }
-
-    @Override
-    public String toString() {
-        return new StringBuilder(StringUtil.simpleClassName(this))
-                .append('[')
-                .append("content=")
-                .append(content())
-                .append(']').toString();
+    public boolean isNull() {
+        return false;
     }
 }

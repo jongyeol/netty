@@ -15,15 +15,16 @@
 
 package io.netty.handler.codec.redis;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.util.internal.StringUtil;
 
 /**
  * Simple Strings of <a href="http://redis.io/topics/protocol">RESP</a>
  */
-public class SimpleStringRedisMessage extends StringRedisMessage {
+public class SimpleStringRedisMessage extends AbstractByteBufRedisMessage {
 
-    public SimpleStringRedisMessage(byte[] message) {
-        super(message);
+    public SimpleStringRedisMessage(ByteBuf content) {
+        super(content);
     }
 
     @Override
@@ -32,16 +33,11 @@ public class SimpleStringRedisMessage extends StringRedisMessage {
     }
 
     @Override
-    public boolean isSuccess() {
-        return true;
-    }
-
-    @Override
     public String toString() {
         return new StringBuilder(StringUtil.simpleClassName(this))
                 .append('[')
                 .append("content=")
-                .append(content)
+                .append(content())
                 .append(']').toString();
     }
 }

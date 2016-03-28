@@ -52,7 +52,7 @@ public class RedisObjectAggregator extends MessageToMessageDecoder<RedisObject> 
 
                 // if current aggregation completed, go to parent aggregation.
                 if (current.children.size() == current.length) {
-                    message = new ArrayRedisMessage(current.children);
+                    message = new DefaultArrayRedisMessage(current.children);
                     depths.pop();
                 } else {
                     // not aggregated yet. try next time.
@@ -66,9 +66,9 @@ public class RedisObjectAggregator extends MessageToMessageDecoder<RedisObject> 
 
     private RedisMessage decodeRedisArrayHeader(ArrayHeaderRedisObject header) {
         if (header.isNull()) {
-            return ArrayRedisMessage.NULL_ARRAY;
+            return NullArrayRedisMessage.INSTANCE;
         } else if (header.length() == 0L) {
-            return ArrayRedisMessage.EMPTY_ARRAY;
+            return EmptyArrayRedisMessage.INSTANCE;
         } else if (header.length() > 0L) {
             // Currently, this codec doesn't support `long` length for arrays because Java's List.size() is int.
             if (header.length() > Integer.MAX_VALUE) {

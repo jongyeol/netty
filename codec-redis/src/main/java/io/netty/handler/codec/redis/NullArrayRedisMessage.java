@@ -15,25 +15,26 @@
 
 package io.netty.handler.codec.redis;
 
-import io.netty.util.internal.ObjectUtil;
+import java.util.List;
 
-public abstract class StringRedisMessage implements RedisMessage {
+public final class NullArrayRedisMessage implements ArrayRedisMessage {
+    public static final NullArrayRedisMessage INSTANCE = new NullArrayRedisMessage();
 
-    protected final byte[] content;
-
-    StringRedisMessage(byte[] content) {
-        ObjectUtil.checkNotNull(content, "content cannot be null");
-        this.content = content;
+    private NullArrayRedisMessage() {
     }
 
-    public byte[] content() {
-        return content;
+    @Override
+    public RedisMessageType type() {
+        return RedisMessageType.ARRAY;
     }
-
-    public abstract boolean isSuccess();
 
     @Override
     public boolean isNull() {
-        return false;
+        return true;
+    }
+
+    @Override
+    public List<RedisMessage> children() {
+        return null;
     }
 }

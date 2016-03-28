@@ -19,17 +19,17 @@ import io.netty.buffer.ByteBuf;
 import io.netty.util.internal.StringUtil;
 
 /**
- * Errors of <a href="http://redis.io/topics/protocol">RESP</a>
+ * Bulk Strings of <a href="http://redis.io/topics/protocol">RESP</a>
  */
-public class ErrorRedisMessage extends AbstractByteBufRedisMessage {
+public class DefaultBulkStringRedisMessage extends AbstractByteBufRedisMessage implements BulkStringRedisMessage {
 
-    public ErrorRedisMessage(ByteBuf content) {
+    public DefaultBulkStringRedisMessage(ByteBuf content) {
         super(content);
     }
 
     @Override
     public RedisMessageType type() {
-        return RedisMessageType.ERROR;
+        return RedisMessageType.BULK_STRING;
     }
 
     @Override

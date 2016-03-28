@@ -15,29 +15,27 @@
 
 package io.netty.handler.codec.redis;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.util.internal.StringUtil;
+import java.util.Collections;
+import java.util.List;
 
-/**
- * Errors of <a href="http://redis.io/topics/protocol">RESP</a>
- */
-public class ErrorRedisMessage extends AbstractByteBufRedisMessage {
+public final class EmptyArrayRedisMessage implements ArrayRedisMessage {
+    public static final EmptyArrayRedisMessage INSTANCE = new EmptyArrayRedisMessage();
 
-    public ErrorRedisMessage(ByteBuf content) {
-        super(content);
+    private EmptyArrayRedisMessage() {
     }
 
     @Override
     public RedisMessageType type() {
-        return RedisMessageType.ERROR;
+        return RedisMessageType.ARRAY;
     }
 
     @Override
-    public String toString() {
-        return new StringBuilder(StringUtil.simpleClassName(this))
-                .append('[')
-                .append("content=")
-                .append(content())
-                .append(']').toString();
+    public boolean isNull() {
+        return false;
+    }
+
+    @Override
+    public List<RedisMessage> children() {
+        return Collections.emptyList();
     }
 }

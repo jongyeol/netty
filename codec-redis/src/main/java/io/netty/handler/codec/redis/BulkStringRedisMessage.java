@@ -16,62 +16,10 @@
 package io.netty.handler.codec.redis;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
-import io.netty.util.AbstractReferenceCounted;
-import io.netty.util.internal.StringUtil;
 
 /**
  * Bulk Strings of <a href="http://redis.io/topics/protocol">RESP</a>
  */
-public class BulkStringRedisMessage extends AbstractReferenceCounted implements RedisMessage {
-
-    public static final BulkStringRedisMessage NULL_BULK_STRING = new BulkStringRedisMessage(null);
-    public static final BulkStringRedisMessage EMPTY_BULK_STRING = new BulkStringRedisMessage(Unpooled.EMPTY_BUFFER);
-
-    private ByteBuf content;
-
-    public BulkStringRedisMessage(ByteBuf content) {
-        this.content = content;
-        if (content != null) {
-            this.content.retain(); // for hold bytebuf
-        }
-    }
-
-    @Override
-    public RedisMessageType type() {
-        return RedisMessageType.BULK_STRING;
-    }
-
-    public ByteBuf content() {
-        return content;
-    }
-
-    @Override
-    public boolean isNull() {
-        return content == null;
-    }
-
-    @Override
-    protected void deallocate() {
-        if (content != null) {
-            content.release();
-        }
-    }
-
-    @Override
-    public BulkStringRedisMessage touch(Object hint) {
-        if (content != null) {
-            content.touch();
-        }
-        return this;
-    }
-
-    @Override
-    public String toString() {
-        return new StringBuilder(StringUtil.simpleClassName(this))
-                .append('[')
-                .append("content=")
-                .append(content)
-                .append(']').toString();
-    }
+public interface BulkStringRedisMessage extends RedisMessage {
+    ByteBuf content();
 }

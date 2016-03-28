@@ -49,7 +49,7 @@ public class RedisEncoderTest {
 
     @Test
     public void shouldEncodeSimpleString() {
-        RedisMessage msg = new SimpleStringRedisMessage(bytesOf("simple"));
+        RedisMessage msg = new SimpleStringRedisMessage(byteBufOf("simple"));
 
         boolean result = channel.writeOutbound(msg);
         assertThat(result, is(true));
@@ -61,7 +61,7 @@ public class RedisEncoderTest {
 
     @Test
     public void shouldEncodeError() {
-        RedisMessage msg = new ErrorRedisMessage(bytesOf("error1"));
+        RedisMessage msg = new ErrorRedisMessage(byteBufOf("error1"));
 
         boolean result = channel.writeOutbound(msg);
         assertThat(result, is(true));
@@ -87,7 +87,7 @@ public class RedisEncoderTest {
     public void shouldEncodeBulkString() {
         ByteBuf bulkString = byteBufOf("bulk\nstring\ntest");
         int length = bulkString.readableBytes();
-        RedisMessage msg = new BulkStringRedisMessage(bulkString);
+        RedisMessage msg = new DefaultBulkStringRedisMessage(bulkString);
 
         boolean result = channel.writeOutbound(msg);
         assertThat(result, is(true));
@@ -100,9 +100,9 @@ public class RedisEncoderTest {
     @Test
     public void shouldEncodeSimpleArray() {
         List<RedisMessage> children = new ArrayList<RedisMessage>();
-        children.add(new BulkStringRedisMessage(byteBufOf("foo")));
-        children.add(new BulkStringRedisMessage(byteBufOf("bar")));
-        RedisMessage msg = new ArrayRedisMessage(children);
+        children.add(new DefaultBulkStringRedisMessage(byteBufOf("foo")));
+        children.add(new DefaultBulkStringRedisMessage(byteBufOf("bar")));
+        RedisMessage msg = new DefaultArrayRedisMessage(children);
 
         boolean result = channel.writeOutbound(msg);
         assertThat(result, is(true));
@@ -114,7 +114,7 @@ public class RedisEncoderTest {
 
     @Test
     public void shouldEncodeNullArray() {
-        RedisMessage msg = ArrayRedisMessage.NULL_ARRAY;
+        RedisMessage msg = NullArrayRedisMessage.INSTANCE;
 
         boolean result = channel.writeOutbound(msg);
         assertThat(result, is(true));
@@ -126,7 +126,7 @@ public class RedisEncoderTest {
 
     @Test
     public void shouldEncodeEmptyArray() {
-        RedisMessage msg = ArrayRedisMessage.EMPTY_ARRAY;
+        RedisMessage msg = EmptyArrayRedisMessage.INSTANCE;
 
         boolean result = channel.writeOutbound(msg);
         assertThat(result, is(true));
@@ -139,12 +139,12 @@ public class RedisEncoderTest {
     @Test
     public void shouldEncodeNestedArray() {
         List<RedisMessage> grandChildren = new ArrayList<RedisMessage>();
-        grandChildren.add(new BulkStringRedisMessage(byteBufOf("bar")));
+        grandChildren.add(new DefaultBulkStringRedisMessage(byteBufOf("bar")));
         grandChildren.add(new IntegerRedisMessage(-1234L));
         List<RedisMessage> children = new ArrayList<RedisMessage>();
-        children.add(new SimpleStringRedisMessage(bytesOf("foo")));
-        children.add(new ArrayRedisMessage(grandChildren));
-        RedisMessage msg = new ArrayRedisMessage(children);
+        children.add(new SimpleStringRedisMessage(byteBufOf("foo")));
+        children.add(new DefaultArrayRedisMessage(grandChildren));
+        RedisMessage msg = new DefaultArrayRedisMessage(children);
 
         boolean result = channel.writeOutbound(msg);
         assertThat(result, is(true));

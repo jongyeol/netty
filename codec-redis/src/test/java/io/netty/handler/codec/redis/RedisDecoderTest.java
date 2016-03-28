@@ -51,7 +51,7 @@ public class RedisDecoderTest {
 
     @Test
     public void shouldDecodeSimpleString() {
-        byte[] content = bytesOf("OK");
+        String content = "OK";
         channel.writeInbound(byteBufOf("+"));
         channel.writeInbound(byteBufOf(content));
         channel.writeInbound(byteBufOf("\r\n"));
@@ -59,7 +59,9 @@ public class RedisDecoderTest {
         SimpleStringRedisMessage msg = channel.readInbound();
 
         assertThat(msg.type(), is(RedisMessageType.SIMPLE_STRING));
-        assertThat(msg.content(), is(content));
+        assertThat(stringOf(msg.content()), is(content));
+
+        ReferenceCountUtil.release(msg);
     }
 
     @Test
@@ -73,7 +75,9 @@ public class RedisDecoderTest {
         ErrorRedisMessage msg = channel.readInbound();
 
         assertThat(msg.type(), is(RedisMessageType.ERROR));
-        assertThat(msg.content(), is(content));
+        assertThat(bytesOf(msg.content()), is(content));
+
+        ReferenceCountUtil.release(msg);
     }
 
     @Test
@@ -107,7 +111,7 @@ public class RedisDecoderTest {
         assertThat(msg.type(), is(RedisMessageType.BULK_STRING));
         assertThat(bytesOf(msg.content()), is(content));
 
-        msg.release();
+        ReferenceCountUtil.release(msg);
     }
 
     @Test
@@ -124,7 +128,7 @@ public class RedisDecoderTest {
         assertThat(msg.type(), is(RedisMessageType.BULK_STRING));
         assertThat(bytesOf(msg.content()), is(content));
 
-        msg.release();
+        ReferenceCountUtil.release(msg);
     }
 
     @Test
@@ -138,7 +142,7 @@ public class RedisDecoderTest {
         assertThat(msg.type(), is(RedisMessageType.BULK_STRING));
         assertThat(msg.content(), is(nullValue()));
 
-        msg.release();
+        ReferenceCountUtil.release(msg);
     }
 
     @Test
@@ -158,11 +162,11 @@ public class RedisDecoderTest {
         assertThat(children.get(0).type(), is(RedisMessageType.INTEGER));
         assertThat(((IntegerRedisMessage) children.get(0)).value(), is(1234L));
         assertThat(children.get(1).type(), is(RedisMessageType.SIMPLE_STRING));
-        assertThat(((SimpleStringRedisMessage) children.get(1)).content(), is(bytesOf("simple")));
+        assertThat(stringOf(((SimpleStringRedisMessage) children.get(1)).content()), is("simple"));
         assertThat(children.get(2).type(), is(RedisMessageType.ERROR));
-        assertThat(((ErrorRedisMessage) children.get(2)).content(), is(bytesOf("error")));
+        assertThat(stringOf(((ErrorRedisMessage) children.get(2)).content()), is("error"));
 
-        msg.release();
+        ReferenceCountUtil.release(msg);
     }
 
     @Test
@@ -190,10 +194,10 @@ public class RedisDecoderTest {
 
         assertThat(strArray.type(), is(RedisMessageType.ARRAY));
         assertThat(strArray.children().size(), is(2));
-        assertThat(((SimpleStringRedisMessage) strArray.children().get(0)).content(), is(bytesOf("Foo")));
-        assertThat(((ErrorRedisMessage) strArray.children().get(1)).content(), is(bytesOf("Bar")));
+        assertThat(stringOf(((SimpleStringRedisMessage) strArray.children().get(0)).content()), is("Foo"));
+        assertThat(stringOf(((ErrorRedisMessage) strArray.children().get(1)).content()), is("Bar"));
 
-        msg.release();
+        ReferenceCountUtil.release(msg);
     }
 
     @Test(expected = IllegalReferenceCountException.class)
@@ -206,8 +210,8 @@ public class RedisDecoderTest {
 
         ArrayRedisMessage msg = channel.readInbound();
 
-        msg.release();
-        msg.release();
+        ReferenceCountUtil.release(msg);
+        ReferenceCountUtil.release(msg);
     }
 
     @Test(expected = IllegalReferenceCountException.class)
@@ -221,7 +225,7 @@ public class RedisDecoderTest {
         ArrayRedisMessage msg = channel.readInbound();
 
         List<RedisMessage> children = msg.children();
-        msg.release();
+        ReferenceCountUtil.release(msg);
         ReferenceCountUtil.release(children.get(1));
     }
 
@@ -236,8 +240,7 @@ public class RedisDecoderTest {
 
         List<RedisMessage> children = msg.children();
         ByteBuf childBuf = ((BulkStringRedisMessage) children.get(0)).content();
-        msg.release();
-        childBuf.release();
+        ReferenceCountUtil.release(msg);
+        ReferenceCountUtil.release(childBuf);
     }
-
 }

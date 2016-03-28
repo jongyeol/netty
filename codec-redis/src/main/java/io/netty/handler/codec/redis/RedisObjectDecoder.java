@@ -19,7 +19,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.util.ByteProcessor;
-import io.netty.util.CharsetUtil;
 
 import java.util.List;
 
@@ -27,6 +26,8 @@ public class RedisObjectDecoder extends ByteToMessageDecoder {
 
     private static final int CRLF_LENGTH = 2;
     private static final long NULL_RESPONSE = -1;
+
+    private final ToLongProcessor toLongProcessor = new ToLongProcessor();
 
     // current decoding states
     private State state;
@@ -88,7 +89,7 @@ public class RedisObjectDecoder extends ByteToMessageDecoder {
     }
 
     private boolean decodeInline(ByteBuf in, List<Object> out) throws Exception {
-        byte[] lineBytes = readLine(in);
+        ByteBuf lineBytes = readLine(in);
         if (lineBytes == null) {
             return false;
         }
@@ -97,11 +98,11 @@ public class RedisObjectDecoder extends ByteToMessageDecoder {
     }
 
     private boolean decodeLength(ByteBuf in, List<Object> out) throws Exception {
-        byte[] lineBytes = readLine(in);
-        if (lineBytes == null) {
+        ByteBuf lineByteBuf = readLine(in);
+        if (lineByteBuf == null) {
             return false;
         }
-        final long length = parseRedisNumber(lineBytes);
+        final long length = parseRedisNumber(lineByteBuf);
         if (type == RedisMessageType.ARRAY) {
             fireMessage(out, new ArrayHeaderRedisObject(length));
             return true;
@@ -117,14 +118,14 @@ public class RedisObjectDecoder extends ByteToMessageDecoder {
     private boolean decodeBulkString(ByteBuf in, List<Object> out) throws Exception {
         if (bulkStringLength == NULL_RESPONSE) {
             // $-1\r\n
-            fireMessage(out, BulkStringRedisMessage.NULL_BULK_STRING);
+            fireMessage(out, NullBulkStringRedisMessage.INSTANCE);
         } else if (bulkStringLength == 0L) {
             // $0\r\n <here> \r\n
             if (in.readableBytes() < CRLF_LENGTH) {
                 return false;
             }
             in.skipBytes(CRLF_LENGTH);
-            fireMessage(out, BulkStringRedisMessage.EMPTY_BULK_STRING);
+            fireMessage(out, EmptyBulkStringRedisMessage.INSTANCE);
         } else if (bulkStringLength > 0L) {
             // ${bulkStringLength}\r\n <here> {data...}\r\n
             if (in.readableBytes() < bulkStringLength + CRLF_LENGTH) {
@@ -132,7 +133,7 @@ public class RedisObjectDecoder extends ByteToMessageDecoder {
             }
             ByteBuf content = in.readSlice((int) bulkStringLength);
             in.skipBytes(CRLF_LENGTH);
-            fireMessage(out, new BulkStringRedisMessage(content));
+            fireMessage(out, new DefaultBulkStringRedisMessage(content));
         } else {
             throw new IllegalArgumentException("bad bulkStringLength: " + bulkStringLength);
         }
@@ -144,7 +145,7 @@ public class RedisObjectDecoder extends ByteToMessageDecoder {
         resetDecoder();
     }
 
-    private RedisMessage newInlineRedisMessage(RedisMessageType messageType, byte[] bytes) {
+    private RedisMessage newInlineRedisMessage(RedisMessageType messageType, ByteBuf bytes) {
         switch (messageType) {
         case SIMPLE_STRING:
             return new SimpleStringRedisMessage(bytes);
@@ -157,7 +158,7 @@ public class RedisObjectDecoder extends ByteToMessageDecoder {
         }
     }
 
-    private static byte[] readLine(ByteBuf in) {
+    private static ByteBuf readLine(ByteBuf in) {
         final int lfIndex = in.forEachByte(ByteProcessor.FIND_LF);
         if (lfIndex < 0) {
             return null;
@@ -166,14 +167,58 @@ public class RedisObjectDecoder extends ByteToMessageDecoder {
         return readBytes(in, length);
     }
 
-    private static byte[] readBytes(ByteBuf in, int length) {
-        byte[] data = new byte[length];
-        in.readBytes(data);
+    private static ByteBuf readBytes(ByteBuf in, int length) {
+        ByteBuf data = in.readSlice(length);
         in.skipBytes(CRLF_LENGTH); // skip CRLF
         return data;
     }
 
-    private static long parseRedisNumber(byte[] data) {
-        return Long.parseLong(new String(data, CharsetUtil.US_ASCII));
+    public long parseRedisNumber(ByteBuf byteBuf) {
+        toLongProcessor.result = 0;
+        toLongProcessor.first = true;
+        byteBuf.forEachByte(toLongProcessor);
+        if (!toLongProcessor.negative) {
+            return -toLongProcessor.result;
+        }
+        return toLongProcessor.result;
+    }
+
+    private static class ToLongProcessor implements ByteProcessor {
+        private long result;
+        private boolean negative;
+        private boolean first;
+
+        @Override
+        public boolean process(byte value) throws Exception {
+            if (first) {
+                first = false;
+
+                if (value == '-') {
+                    negative = true;
+                } else {
+                    negative = false;
+                    int digit = value - '0';
+                    result = result * 10 - digit;
+                }
+                return true;
+            }
+
+            int digit = value - '0';
+            result = result * 10 - digit;
+
+            return true;
+        }
+
+        public long content() {
+            if (!negative) {
+                return -result;
+            }
+            return result;
+        }
+
+        public void reset() {
+            first = true;
+            result = 0;
+        }
     }
 }
