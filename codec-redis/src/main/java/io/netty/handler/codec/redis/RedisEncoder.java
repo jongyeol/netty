@@ -17,43 +17,44 @@ package io.netty.handler.codec.redis;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.CodecException;
 import io.netty.handler.codec.MessageToMessageEncoder;
 import io.netty.util.CharsetUtil;
 
 import java.util.List;
 
-public class RedisEncoder extends MessageToMessageEncoder<RedisObject> {
+public class RedisEncoder extends MessageToMessageEncoder<RedisMessage> {
 
     private static final int TYPE_LENGTH = 1;
     private static final byte[] CRLF = { '\r', '\n' };
     private static final byte[] NULL_BULK_STRING = { '-', '1' };
 
     @Override
-    protected void encode(ChannelHandlerContext ctx, RedisObject msg, List<Object> out) throws Exception {
+    protected void encode(ChannelHandlerContext ctx, RedisMessage msg, List<Object> out) throws Exception {
         ByteBuf buf = ctx.alloc().buffer(calculateBufferLength(msg));
         out.add(writeRedisMessage(buf, msg));
     }
 
-    private static ByteBuf writeRedisMessage(ByteBuf buf, RedisObject msg) {
-        if (msg instanceof SimpleStringRedisMessage || msg instanceof ErrorRedisMessage) {
-            writeInlineByteBufMessage(buf, (AbstractByteBufRedisMessage) msg);
+    private static ByteBuf writeRedisMessage(ByteBuf buf, RedisMessage msg) {
+        if (msg instanceof StringRedisMessage) {
+            writeInlineByteBufMessage(buf, (StringRedisMessage) msg);
         } else if (msg instanceof IntegerRedisMessage) {
             writeIntegerMessage(buf, (IntegerRedisMessage) msg);
         } else if (msg instanceof BulkStringRedisMessage) {
             writeBulkStringMessage(buf, (BulkStringRedisMessage) msg);
-        } else if (msg instanceof ArrayHeaderRedisObject) {
-            writeArrayHeaderObject(buf, (ArrayHeaderRedisObject) msg);
+        } else if (msg instanceof ArrayHeaderRedisMessage) {
+            writeArrayHeaderObject(buf, (ArrayHeaderRedisMessage) msg);
         } else if (msg instanceof ArrayRedisMessage) {
             writeArrayMessage(buf, (ArrayRedisMessage) msg);
         } else {
-            throw new Error("bad message: " + msg);
+            throw new CodecException("bad message: " + msg);
         }
         return buf;
     }
 
-    private static void writeInlineByteBufMessage(ByteBuf buf, AbstractByteBufRedisMessage msg) {
+    private static void writeInlineByteBufMessage(ByteBuf buf, StringRedisMessage msg) {
         buf.writeByte(msg.type().value());
-        buf.writeBytes(msg.content());
+        buf.writeBytes(msg.content().getBytes(CharsetUtil.UTF_8));
         buf.writeBytes(CRLF);
     }
 
@@ -79,7 +80,7 @@ public class RedisEncoder extends MessageToMessageEncoder<RedisObject> {
     /**
      * Write array header only without body. Use this if you want to write arrays as streaming.
      */
-    private static void writeArrayHeaderObject(ByteBuf buf, ArrayHeaderRedisObject msg) {
+    private static void writeArrayHeaderObject(ByteBuf buf, ArrayHeaderRedisMessage msg) {
         buf.writeByte(RedisMessageType.ARRAY.value());
         if (msg.isNull()) {
             buf.writeBytes(NULL_BULK_STRING);
@@ -106,9 +107,10 @@ public class RedisEncoder extends MessageToMessageEncoder<RedisObject> {
         }
     }
 
-    private static int calculateBufferLength(RedisObject msg) {
-        if (msg instanceof SimpleStringRedisMessage || msg instanceof ErrorRedisMessage) {
-            return TYPE_LENGTH + ((AbstractByteBufRedisMessage) msg).content().readableBytes() + CRLF.length;
+    private static int calculateBufferLength(RedisMessage msg) {
+        if (msg instanceof StringRedisMessage) {
+            // TODO getBytes is not good..
+            return TYPE_LENGTH + ((StringRedisMessage) msg).content().getBytes(CharsetUtil.UTF_8).length + CRLF.length;
         } else if (msg instanceof IntegerRedisMessage) {
             return TYPE_LENGTH + getBufferLengthOfNumber(((IntegerRedisMessage) msg).value()) + CRLF.length;
         } else if (msg instanceof BulkStringRedisMessage) {
@@ -120,8 +122,8 @@ public class RedisEncoder extends MessageToMessageEncoder<RedisObject> {
                 return TYPE_LENGTH + numberToBytes(contentLength).length + CRLF.length
                        + contentLength + CRLF.length;
             }
-        } else if (msg instanceof ArrayHeaderRedisObject) {
-            return TYPE_LENGTH + getBufferLengthOfNumber(((ArrayHeaderRedisObject) msg).length()) + CRLF.length;
+        } else if (msg instanceof ArrayHeaderRedisMessage) {
+            return TYPE_LENGTH + getBufferLengthOfNumber(((ArrayHeaderRedisMessage) msg).length()) + CRLF.length;
         } else if (msg instanceof ArrayRedisMessage) {
             final ArrayRedisMessage message = (ArrayRedisMessage) msg;
             if (message.children() == null) {
@@ -134,7 +136,7 @@ public class RedisEncoder extends MessageToMessageEncoder<RedisObject> {
                 return length;
             }
         } else {
-            throw new Error("bad message: " + msg);
+            throw new CodecException("bad message: " + msg);
         }
     }
 

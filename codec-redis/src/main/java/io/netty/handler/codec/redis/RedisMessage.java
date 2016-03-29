@@ -16,8 +16,12 @@
 package io.netty.handler.codec.redis;
 
 /**
- * RedisMessage is an aggregated message object.
+ * RedisMessage is base interface for codec-redis
  */
-public interface RedisMessage extends RedisObject {
+public interface RedisMessage {
+
     RedisMessageType type();
+
+    boolean isNull();
+
 }

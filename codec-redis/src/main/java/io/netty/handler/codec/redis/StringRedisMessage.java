@@ -15,21 +15,38 @@
 
 package io.netty.handler.codec.redis;
 
-import io.netty.buffer.ByteBuf;
+import io.netty.util.internal.ObjectUtil;
 import io.netty.util.internal.StringUtil;
 
 /**
- * Errors of <a href="http://redis.io/topics/protocol">RESP</a>
+ * Simple Strings or Errors of <a href="http://redis.io/topics/protocol">RESP</a>
  */
-public class ErrorRedisMessage extends AbstractByteBufRedisMessage {
+public class StringRedisMessage implements RedisMessage {
 
-    public ErrorRedisMessage(ByteBuf content) {
-        super(content);
+    private final RedisMessageType type;
+    private final String content;
+
+    StringRedisMessage(RedisMessageType type, String content) {
+        ObjectUtil.checkNotNull(content, "content cannot be null");
+        if (type != RedisMessageType.SIMPLE_STRING && type != RedisMessageType.ERROR) {
+            throw new IllegalArgumentException("bad type: " + type);
+        }
+        this.type = type;
+        this.content = content;
+    }
+
+    public String content() {
+        return content;
     }
 
     @Override
     public RedisMessageType type() {
-        return RedisMessageType.ERROR;
+        return type;
+    }
+
+    @Override
+    public boolean isNull() {
+        return false;
     }
 
     @Override
@@ -37,7 +54,7 @@ public class ErrorRedisMessage extends AbstractByteBufRedisMessage {
         return new StringBuilder(StringUtil.simpleClassName(this))
                 .append('[')
                 .append("content=")
-                .append(content())
+                .append(content)
                 .append(']').toString();
     }
 }

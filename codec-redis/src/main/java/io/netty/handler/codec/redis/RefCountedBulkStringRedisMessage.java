@@ -16,20 +16,26 @@
 package io.netty.handler.codec.redis;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.DefaultByteBufHolder;
 import io.netty.util.internal.StringUtil;
 
 /**
  * Bulk Strings of <a href="http://redis.io/topics/protocol">RESP</a>
  */
-public class DefaultBulkStringRedisMessage extends AbstractByteBufRedisMessage implements BulkStringRedisMessage {
+public class RefCountedBulkStringRedisMessage extends DefaultByteBufHolder implements BulkStringRedisMessage {
 
-    public DefaultBulkStringRedisMessage(ByteBuf content) {
-        super(content);
+    RefCountedBulkStringRedisMessage(ByteBuf content) {
+        super(content.retain());
     }
 
     @Override
     public RedisMessageType type() {
         return RedisMessageType.BULK_STRING;
+    }
+
+    @Override
+    public boolean isNull() {
+        return false;
     }
 
     @Override

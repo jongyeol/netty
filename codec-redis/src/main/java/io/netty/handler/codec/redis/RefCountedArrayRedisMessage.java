@@ -22,11 +22,11 @@ import io.netty.util.internal.StringUtil;
 
 import java.util.List;
 
-public class DefaultArrayRedisMessage extends AbstractReferenceCounted implements ArrayRedisMessage {
+public class RefCountedArrayRedisMessage extends AbstractReferenceCounted implements ArrayRedisMessage {
 
     private final List<RedisMessage> children;
 
-    public DefaultArrayRedisMessage(List<RedisMessage> children) {
+    public RefCountedArrayRedisMessage(List<RedisMessage> children) {
         ObjectUtil.checkNotNull(children, "children cannot be null");
         this.children = children; // do not retain here. children are already retained when created.
     }
@@ -54,7 +54,7 @@ public class DefaultArrayRedisMessage extends AbstractReferenceCounted implement
     }
 
     @Override
-    public DefaultArrayRedisMessage touch(Object hint) {
+    public RefCountedArrayRedisMessage touch(Object hint) {
         return this;
     }
 

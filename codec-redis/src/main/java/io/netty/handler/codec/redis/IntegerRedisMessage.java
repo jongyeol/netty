@@ -24,7 +24,7 @@ public class IntegerRedisMessage implements RedisMessage {
 
     private final long value;
 
-    public IntegerRedisMessage(long value) {
+    IntegerRedisMessage(long value) {
         this.value = value;
     }
 

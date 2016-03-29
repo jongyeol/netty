@@ -15,26 +15,42 @@
 
 package io.netty.handler.codec.redis;
 
-import java.util.List;
+import io.netty.util.internal.StringUtil;
 
-public final class NullArrayRedisMessage implements ArrayRedisMessage {
-    public static final NullArrayRedisMessage INSTANCE = new NullArrayRedisMessage();
+/**
+ * Header of Redis Array Message.
+ */
+public class ArrayHeaderRedisMessage implements RedisMessage {
 
-    private NullArrayRedisMessage() {
+    private final long length;
+
+    ArrayHeaderRedisMessage(long length) {
+        this.length = length;
+    }
+
+    /**
+     * get length of this array object.
+     */
+    public long length() {
+        return length;
     }
 
     @Override
     public RedisMessageType type() {
-        return RedisMessageType.ARRAY;
+        return RedisMessageType.ARRAY_HEADER;
     }
 
     @Override
     public boolean isNull() {
-        return true;
+        return length == -1;
     }
 
     @Override
-    public List<RedisMessage> children() {
-        return null;
+    public String toString() {
+        return new StringBuilder(StringUtil.simpleClassName(this))
+                .append('[')
+                .append("length=")
+                .append(length)
+                .append(']').toString();
     }
 }

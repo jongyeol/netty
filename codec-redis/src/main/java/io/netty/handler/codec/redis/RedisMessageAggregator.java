@@ -16,6 +16,7 @@
 package io.netty.handler.codec.redis;
 
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.CodecException;
 import io.netty.handler.codec.MessageToMessageDecoder;
 import io.netty.util.ReferenceCountUtil;
 
@@ -24,35 +25,30 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 
-public class RedisObjectAggregator extends MessageToMessageDecoder<RedisObject> {
+public class RedisMessageAggregator extends MessageToMessageDecoder<RedisMessage> {
 
     private final Deque<AggregateState> depths;
 
-    public RedisObjectAggregator() {
+    public RedisMessageAggregator() {
         depths = new ArrayDeque<AggregateState>();
     }
 
     @Override
-    protected void decode(ChannelHandlerContext ctx, RedisObject msg, List<Object> out) throws Exception {
-        RedisMessage message;
-
-        if (msg instanceof RedisMessage) {
-            message = (RedisMessage) msg;
-            ReferenceCountUtil.retain(message);
-        } else if (msg instanceof ArrayHeaderRedisObject) {
-            message = decodeRedisArrayHeader((ArrayHeaderRedisObject) msg);
+    protected void decode(ChannelHandlerContext ctx, RedisMessage msg, List<Object> out) throws Exception {
+        if (msg instanceof ArrayHeaderRedisMessage) {
+            msg = decodeRedisArrayHeader((ArrayHeaderRedisMessage) msg);
         } else {
-            throw new Error();
+            ReferenceCountUtil.retain(msg);
         }
 
-        if (message != null) {
+        if (msg != null) {
             while (!depths.isEmpty()) {
                 AggregateState current = depths.peek();
-                current.children.add(message);
+                current.children.add(msg);
 
                 // if current aggregation completed, go to parent aggregation.
                 if (current.children.size() == current.length) {
-                    message = new DefaultArrayRedisMessage(current.children);
+                    msg = new RefCountedArrayRedisMessage(current.children);
                     depths.pop();
                 } else {
                     // not aggregated yet. try next time.
@@ -60,26 +56,26 @@ public class RedisObjectAggregator extends MessageToMessageDecoder<RedisObject> 
                 }
             }
 
-            out.add(message);
+            out.add(msg);
         }
     }
 
-    private RedisMessage decodeRedisArrayHeader(ArrayHeaderRedisObject header) {
+    private RedisMessage decodeRedisArrayHeader(ArrayHeaderRedisMessage header) {
         if (header.isNull()) {
-            return NullArrayRedisMessage.INSTANCE;
+            return RedisMessageFactory.nullArray();
         } else if (header.length() == 0L) {
-            return EmptyArrayRedisMessage.INSTANCE;
+            return RedisMessageFactory.emptyArray();
         } else if (header.length() > 0L) {
             // Currently, this codec doesn't support `long` length for arrays because Java's List.size() is int.
             if (header.length() > Integer.MAX_VALUE) {
-                throw new IllegalStateException("this codec doesn't support longer length than " + Integer.MAX_VALUE);
+                throw new CodecException("this codec doesn't support longer length than " + Integer.MAX_VALUE);
             }
 
             // start aggregating array
             depths.push(new AggregateState((int) header.length()));
             return null;
         } else {
-            throw new IllegalArgumentException("bad length: " + header.length());
+            throw new CodecException("bad length: " + header.length());
         }
     }
 

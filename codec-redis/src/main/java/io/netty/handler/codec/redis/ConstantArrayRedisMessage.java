@@ -15,29 +15,28 @@
 
 package io.netty.handler.codec.redis;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.util.internal.StringUtil;
+import java.util.List;
 
-/**
- * Simple Strings of <a href="http://redis.io/topics/protocol">RESP</a>
- */
-public class SimpleStringRedisMessage extends AbstractByteBufRedisMessage {
+public final class ConstantArrayRedisMessage implements ArrayRedisMessage {
 
-    public SimpleStringRedisMessage(ByteBuf content) {
-        super(content);
+    private List<RedisMessage> children;
+
+    ConstantArrayRedisMessage(List<RedisMessage> children) {
+        this.children = children;
     }
 
     @Override
     public RedisMessageType type() {
-        return RedisMessageType.SIMPLE_STRING;
+        return RedisMessageType.ARRAY;
     }
 
     @Override
-    public String toString() {
-        return new StringBuilder(StringUtil.simpleClassName(this))
-                .append('[')
-                .append("content=")
-                .append(content())
-                .append(']').toString();
+    public boolean isNull() {
+        return children == null;
+    }
+
+    @Override
+    public List<RedisMessage> children() {
+        return children;
     }
 }

@@ -15,37 +15,28 @@
 
 package io.netty.handler.codec.redis;
 
-import io.netty.util.internal.StringUtil;
+import io.netty.buffer.ByteBuf;
 
-/**
- * Header of Redis Array Message.
- */
-public class ArrayHeaderRedisObject implements RedisObject {
+public class ConstantBulkStringRedisMessage implements BulkStringRedisMessage {
 
-    private final long length;
+    private ByteBuf content;
 
-    public ArrayHeaderRedisObject(long length) {
-        this.length = length;
+    ConstantBulkStringRedisMessage(ByteBuf content) {
+        this.content = content;
     }
 
-    /**
-     * get length of this array object.
-     */
-    public long length() {
-        return length;
+    @Override
+    public ByteBuf content() {
+        return content;
+    }
+
+    @Override
+    public RedisMessageType type() {
+        return RedisMessageType.BULK_STRING;
     }
 
     @Override
     public boolean isNull() {
-        return length == -1;
-    }
-
-    @Override
-    public String toString() {
-        return new StringBuilder(StringUtil.simpleClassName(this))
-                .append('[')
-                .append("length=")
-                .append(length)
-                .append(']').toString();
+        return content == null;
     }
 }

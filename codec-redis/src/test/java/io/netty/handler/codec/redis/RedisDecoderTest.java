@@ -33,7 +33,7 @@ import static org.junit.Assert.*;
 import static io.netty.handler.codec.redis.RedisCodecTestUtil.*;
 
 /**
- * Verifies the correct functionality of the {@link RedisObjectDecoder} and {@link RedisObjectAggregator}.
+ * Verifies the correct functionality of the {@link RedisDecoder} and {@link RedisMessageAggregator}.
  */
 public class RedisDecoderTest {
 
@@ -41,7 +41,7 @@ public class RedisDecoderTest {
 
     @Before
     public void setup() throws Exception {
-        channel = new EmbeddedChannel(new RedisObjectDecoder(), new RedisObjectAggregator());
+        channel = new EmbeddedChannel(new RedisDecoder(), new RedisMessageAggregator());
     }
 
     @After
@@ -56,26 +56,26 @@ public class RedisDecoderTest {
         channel.writeInbound(byteBufOf(content));
         channel.writeInbound(byteBufOf("\r\n"));
 
-        SimpleStringRedisMessage msg = channel.readInbound();
+        StringRedisMessage msg = channel.readInbound();
 
         assertThat(msg.type(), is(RedisMessageType.SIMPLE_STRING));
-        assertThat(stringOf(msg.content()), is(content));
+        assertThat(msg.content(), is(content));
 
         ReferenceCountUtil.release(msg);
     }
 
     @Test
     public void shouldDecodeError() {
-        byte[] content = bytesOf("ERROR sample message");
+        String content = "ERROR sample message";
         channel.writeInbound(byteBufOf("-"));
         channel.writeInbound(byteBufOf(content));
         channel.writeInbound(byteBufOf("\r"));
         channel.writeInbound(byteBufOf("\n"));
 
-        ErrorRedisMessage msg = channel.readInbound();
+        StringRedisMessage msg = channel.readInbound();
 
         assertThat(msg.type(), is(RedisMessageType.ERROR));
-        assertThat(bytesOf(msg.content()), is(content));
+        assertThat(msg.content(), is(content));
 
         ReferenceCountUtil.release(msg);
     }
@@ -92,6 +92,8 @@ public class RedisDecoderTest {
 
         assertThat(msg.type(), is(RedisMessageType.INTEGER));
         assertThat(msg.value(), is(value));
+
+        ReferenceCountUtil.release(msg);
     }
 
     @Test
@@ -162,9 +164,9 @@ public class RedisDecoderTest {
         assertThat(children.get(0).type(), is(RedisMessageType.INTEGER));
         assertThat(((IntegerRedisMessage) children.get(0)).value(), is(1234L));
         assertThat(children.get(1).type(), is(RedisMessageType.SIMPLE_STRING));
-        assertThat(stringOf(((SimpleStringRedisMessage) children.get(1)).content()), is("simple"));
+        assertThat(((StringRedisMessage) children.get(1)).content(), is("simple"));
         assertThat(children.get(2).type(), is(RedisMessageType.ERROR));
-        assertThat(stringOf(((ErrorRedisMessage) children.get(2)).content()), is("error"));
+        assertThat(((StringRedisMessage) children.get(2)).content(), is("error"));
 
         ReferenceCountUtil.release(msg);
     }
@@ -194,8 +196,8 @@ public class RedisDecoderTest {
 
         assertThat(strArray.type(), is(RedisMessageType.ARRAY));
         assertThat(strArray.children().size(), is(2));
-        assertThat(stringOf(((SimpleStringRedisMessage) strArray.children().get(0)).content()), is("Foo"));
-        assertThat(stringOf(((ErrorRedisMessage) strArray.children().get(1)).content()), is("Bar"));
+        assertThat(((StringRedisMessage) strArray.children().get(0)).content(), is("Foo"));
+        assertThat(((StringRedisMessage) strArray.children().get(1)).content(), is("Bar"));
 
         ReferenceCountUtil.release(msg);
     }

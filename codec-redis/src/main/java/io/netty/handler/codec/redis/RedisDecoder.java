@@ -18,11 +18,12 @@ package io.netty.handler.codec.redis;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
+import io.netty.handler.codec.CodecException;
 import io.netty.util.ByteProcessor;
 
 import java.util.List;
 
-public class RedisObjectDecoder extends ByteToMessageDecoder {
+public class RedisDecoder extends ByteToMessageDecoder {
 
     private static final int CRLF_LENGTH = 2;
     private static final long NULL_RESPONSE = -1;
@@ -39,11 +40,11 @@ public class RedisObjectDecoder extends ByteToMessageDecoder {
     private enum State {
         DECODE_TYPE,
         DECODE_INLINE, // SIMPLE_STRING, ERROR, INTEGER
-        DECODE_LENGTH, // BULK_STRING, ARRAY
+        DECODE_LENGTH, // BULK_STRING, ARRAY_HEADER
         DECODE_BULK_STRING,
     }
 
-    public RedisObjectDecoder() {
+    public RedisDecoder() {
         resetDecoder();
     }
 
@@ -66,12 +67,12 @@ public class RedisObjectDecoder extends ByteToMessageDecoder {
                     next = decodeBulkString(in, out);
                     break;
                 default:
-                    throw new Error("Unknown state: " + state);
+                    throw new CodecException("Unknown state: " + state);
                 }
             } while (next);
         } catch (Exception e) {
             resetDecoder();
-            throw e;
+            throw new CodecException(e);
         }
     }
 
@@ -103,29 +104,29 @@ public class RedisObjectDecoder extends ByteToMessageDecoder {
             return false;
         }
         final long length = parseRedisNumber(lineByteBuf);
-        if (type == RedisMessageType.ARRAY) {
-            fireMessage(out, new ArrayHeaderRedisObject(length));
+        if (type == RedisMessageType.ARRAY_HEADER) {
+            fireMessage(out, RedisMessageFactory.createArrayHeader(length));
             return true;
         } else if (type == RedisMessageType.BULK_STRING) {
             bulkStringLength = length;
             state = State.DECODE_BULK_STRING;
             return true;
         } else {
-            throw new Error("bad type: " + type);
+            throw new CodecException("bad type: " + type);
         }
     }
 
     private boolean decodeBulkString(ByteBuf in, List<Object> out) throws Exception {
         if (bulkStringLength == NULL_RESPONSE) {
             // $-1\r\n
-            fireMessage(out, NullBulkStringRedisMessage.INSTANCE);
+            fireMessage(out, RedisMessageFactory.nullBulkString());
         } else if (bulkStringLength == 0L) {
             // $0\r\n <here> \r\n
             if (in.readableBytes() < CRLF_LENGTH) {
                 return false;
             }
             in.skipBytes(CRLF_LENGTH);
-            fireMessage(out, EmptyBulkStringRedisMessage.INSTANCE);
+            fireMessage(out, RedisMessageFactory.emptyBulkString());
         } else if (bulkStringLength > 0L) {
             // ${bulkStringLength}\r\n <here> {data...}\r\n
             if (in.readableBytes() < bulkStringLength + CRLF_LENGTH) {
@@ -133,14 +134,14 @@ public class RedisObjectDecoder extends ByteToMessageDecoder {
             }
             ByteBuf content = in.readSlice((int) bulkStringLength);
             in.skipBytes(CRLF_LENGTH);
-            fireMessage(out, new DefaultBulkStringRedisMessage(content));
+            fireMessage(out, RedisMessageFactory.createBulkString(content));
         } else {
-            throw new IllegalArgumentException("bad bulkStringLength: " + bulkStringLength);
+            throw new CodecException("bad bulkStringLength: " + bulkStringLength);
         }
         return true;
     }
 
-    private void fireMessage(List<Object> out, RedisObject msg) {
+    private void fireMessage(List<Object> out, RedisMessage msg) {
         out.add(msg);
         resetDecoder();
     }
@@ -148,13 +149,13 @@ public class RedisObjectDecoder extends ByteToMessageDecoder {
     private RedisMessage newInlineRedisMessage(RedisMessageType messageType, ByteBuf bytes) {
         switch (messageType) {
         case SIMPLE_STRING:
-            return new SimpleStringRedisMessage(bytes);
+            return RedisMessageFactory.createSimpleString(bytes);
         case ERROR:
-            return new ErrorRedisMessage(bytes);
+            return RedisMessageFactory.createError(bytes);
         case INTEGER:
-            return new IntegerRedisMessage(parseRedisNumber(bytes));
+            return RedisMessageFactory.createInteger(parseRedisNumber(bytes));
         default:
-            throw new IllegalArgumentException("bad type: " + type);
+            throw new CodecException("bad type: " + type);
         }
     }
 

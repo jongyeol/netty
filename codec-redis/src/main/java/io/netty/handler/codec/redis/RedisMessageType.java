@@ -24,7 +24,8 @@ public enum RedisMessageType {
     ERROR((byte) '-', true),
     INTEGER((byte) ':', true),
     BULK_STRING((byte) '$', false),
-    ARRAY((byte) '*', false);
+    ARRAY_HEADER((byte) '*', false),
+    ARRAY((byte) '*', false); // for aggregated
 
     private final byte value;
     private final boolean inline;
@@ -45,7 +46,7 @@ public enum RedisMessageType {
     public static RedisMessageType valueOf(byte value) {
         for (RedisMessageType t : values()) {
             if (t.value == value) {
-                return t;
+                return t; // never return ARRAY
             }
         }
         throw new IllegalArgumentException("Unknown RedisMessageType: " + value);
