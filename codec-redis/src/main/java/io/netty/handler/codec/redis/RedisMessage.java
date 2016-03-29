@@ -20,8 +20,18 @@ package io.netty.handler.codec.redis;
  */
 public interface RedisMessage {
 
+    /**
+     * Returns the {@link RedisMessageType}.
+     *
+     * @return the message type.
+     */
     RedisMessageType type();
 
+    /**
+     * Returns whether the content of this message is {@code null}.
+     *
+     * @return indicates whether the content of this message is {@code null}.
+     */
     boolean isNull();
 
 }

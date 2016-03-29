@@ -25,6 +25,10 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 
+/**
+ * Aggregates {@link RedisMessage} parts into {@link RedisMessage}. This decoder
+ * should be used together with {@link RedisDecoder}.
+ */
 public class RedisMessageAggregator extends MessageToMessageDecoder<RedisMessage> {
 
     private final Deque<AggregateState> depths;

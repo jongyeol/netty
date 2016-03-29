@@ -23,6 +23,13 @@ import io.netty.util.ByteProcessor;
 
 import java.util.List;
 
+/**
+ * Decodes the Redis protocol into {@link RedisMessage} objects following
+ * <a href="http://redis.io/topics/protocol">RESP (REdis Serialization Protocol)</a>.
+ *
+ * {@link RedisMessage} parts can be aggregated to {@link RedisMessage} using
+ * {@link RedisMessageAggregator} or processed directly.
+ */
 public class RedisDecoder extends ByteToMessageDecoder {
 
     private static final int CRLF_LENGTH = 2;

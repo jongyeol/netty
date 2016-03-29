@@ -23,6 +23,11 @@ import io.netty.util.CharsetUtil;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Factory for {@link RedisMessage} instances. This factory either creates new instances or uses
+ * predefined, cached instances where appropriate. Note that some results are {@link io.netty.util.ReferenceCounted}
+ * which are never cached/shared.
+ */
 public final class RedisMessageFactory {
 
     private static final PredefinedString[] PREDEFINED_SIMPLE_STRINGS = {
@@ -49,67 +54,156 @@ public final class RedisMessageFactory {
     private RedisMessageFactory() {
     }
 
+    /**
+     * Creates a {@link StringRedisMessage} for the given {@code content} using {@link RedisMessageType#SIMPLE_STRING}.
+     *
+     * @param content the message content, must not be {@code null}.
+     * @return a new {@link StringRedisMessage} containing the {@code content}.
+     */
     public static RedisMessage createSimpleString(String content) {
+        if(content == null) {
+            throw new IllegalArgumentException("Content must not be null");
+        }
+
         RedisMessage msg = findPredefinedString(PREDEFINED_SIMPLE_STRINGS, content);
         return msg != null ? msg : new StringRedisMessage(RedisMessageType.SIMPLE_STRING, content);
     }
 
+    /**
+     * Creates a {@link StringRedisMessage} for the given {@code content} using {@link RedisMessageType#SIMPLE_STRING}.
+     *
+     * @param content the message content, must not be {@code null}.
+     * @return a new {@link StringRedisMessage} containing the {@code content}.
+     */
     public static RedisMessage createSimpleString(ByteBuf content) {
+        if(content == null) {
+            throw new IllegalArgumentException("Content must not be null");
+        }
+
         RedisMessage msg = findPredefinedString(PREDEFINED_SIMPLE_STRINGS, content);
         return msg != null ? msg : new StringRedisMessage(RedisMessageType.SIMPLE_STRING,
                                                           content.toString(CharsetUtil.UTF_8));
     }
 
+    /**
+     * Creates a {@link StringRedisMessage} for the given {@code content} using {@link RedisMessageType#ERROR}.
+     *
+     * @param content the message content, must not be {@code null}.
+     * @return a new {@link StringRedisMessage} containing the {@code content}.
+     */
     public static RedisMessage createError(String content) {
+        if(content == null) {
+            throw new IllegalArgumentException("Content must not be null");
+        }
+
         RedisMessage msg = findPredefinedString(PREDEFINED_ERRORS, content);
         return msg != null ? msg : new StringRedisMessage(RedisMessageType.ERROR, content);
     }
 
+    /**
+     * Creates a {@link StringRedisMessage} from {@code content} using {@link RedisMessageType#ERROR}.
+     *
+     * @param content the message content, must not be {@code null}.
+     * @return a new {@link StringRedisMessage} containing the {@code content}.
+     */
     public static RedisMessage createError(ByteBuf content) {
+        if(content == null) {
+            throw new IllegalArgumentException("Content must not be null");
+        }
+
         RedisMessage msg = findPredefinedString(PREDEFINED_ERRORS, content);
         return msg != null ? msg : new StringRedisMessage(RedisMessageType.ERROR, content.toString(CharsetUtil.UTF_8));
     }
 
+    /**
+     * Creates a {@link IntegerRedisMessage} for the given {@code content}.
+     *
+     * @param value the message content.
+     * @return a new {@link IntegerRedisMessage} containing the {@code content}.
+     */
     public static RedisMessage createInteger(long value) {
         return new IntegerRedisMessage(value);
     }
 
+    /**
+     * Creates a {@link BulkStringRedisMessage} with {@code null} content.
+     *
+     * @return a {@link BulkStringRedisMessage} with {@code null} content.
+     */
     public static RedisMessage nullBulkString() {
         return NULL_BULK_STRING;
     }
 
+    /**
+     * Creates a {@link BulkStringRedisMessage} with empty content.
+     *
+     * @return a {@link BulkStringRedisMessage} with empty content.
+     */
     public static RedisMessage emptyBulkString() {
         return EMPTY_BULK_STRING;
     }
 
-    public static RedisMessage createBulkString(ByteBuf byteBuf) {
-        if (byteBuf == null) {
-            return NULL_BULK_STRING;
-        } else if (!byteBuf.isReadable()) {
+    /**
+     * Creates a {@link BulkStringRedisMessage} for the given {@code content}.
+     * Note that non-empty {@code content} results in {@link io.netty.util.ReferenceCounted} instances.
+     *
+     * @param content the content, must not be {@code null}.
+     * @return a {@link BulkStringRedisMessage} for the given {@code content}
+     */
+    public static RedisMessage createBulkString(ByteBuf content) {
+        if(content == null) {
+            throw new IllegalArgumentException("Content must not be null");
+        }
+
+        if (!content.isReadable()) {
             return EMPTY_BULK_STRING;
         }
-        return new RefCountedBulkStringRedisMessage(byteBuf);
+        return new RefCountedBulkStringRedisMessage(content);
     }
 
+    /**
+     * Creates a {@link ArrayHeaderRedisMessage} for the given {@code length}.
+     *
+     * @return a {@link ArrayHeaderRedisMessage} for the given {@code length}.
+     */
     public static RedisMessage createArrayHeader(long length) {
         return new ArrayHeaderRedisMessage(length);
     }
 
+    /**
+     * Creates a {@link ArrayRedisMessage} with {@code null} content.
+     *
+     * @return a {@link ArrayRedisMessage} with {@code null} content.
+     */
     public static RedisMessage nullArray() {
         return NULL_ARRAY;
     }
 
+    /**
+     * Creates a {@link ArrayRedisMessage} with empty content.
+     *
+     * @return a {@link ArrayRedisMessage} with empty content.
+     */
     public static RedisMessage emptyArray() {
         return EMPTY_ARRAY;
     }
 
-    public static RedisMessage createArray(List<RedisMessage> children) {
-        if (children == null) {
-            return NULL_ARRAY;
-        } else if (children.isEmpty()) {
+    /**
+     * Creates a {@link ArrayRedisMessage} for the given {@code content}.
+     * Note that non-empty {@code content} results in {@link io.netty.util.ReferenceCounted} instances.
+     *
+     * @param content the content, must not be {@code null}.
+     * @return a {@link ArrayRedisMessage} for the given {@code content}.
+     */
+    public static RedisMessage createArray(List<RedisMessage> content) {
+        if(content == null) {
+            throw new IllegalArgumentException("Content must not be null");
+        }
+
+        if (content.isEmpty()) {
             return EMPTY_ARRAY;
         } else {
-            return new RefCountedArrayRedisMessage(children);
+            return new RefCountedArrayRedisMessage(content);
         }
     }
 

@@ -23,6 +23,10 @@ import io.netty.util.CharsetUtil;
 
 import java.util.List;
 
+/**
+ * Encodes {@link RedisMessage} into bytes following
+ * <a href="http://redis.io/topics/protocol">RESP (REdis Serialization Protocol)</a>.
+ */
 public class RedisEncoder extends MessageToMessageEncoder<RedisMessage> {
 
     private static final int TYPE_LENGTH = 1;
